@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+	<title>JSON Zipper</title>
+	<meta http-equiv="Cache-Control" content="no-store" />
+	<script src="testFile.js"></script>
+	<script src="jsonZipper.js"></script>
+	<script>
+	</script>
+</head>
+<body>
+	<p id="out">Testing...</p>
+	<script type="text/javascript">
+	var start = Date.now();
+	var first = false;
+	var msTime = function(j) {
+		if (j) {
+			if (first) {
+				return new Date(j.timestamp) - first;
+			} else 
+				first = new Date(j.timestamp);
+		}
+		return 0;
+	};
+	var jZ = new jsonZipper(jsonObj,{identifiers:["type","selector"],exclude:["ti"],include:["isRelative","targetWidth","targetHeight"],remove:["timestamp"],add:{ti:msTime}});
+	var newObj = jZ.zip();
+	var end = Date.now();
+	document.getElementById('out').innerHTML = "Test took "+(end-start)+"ms to complete with a compression rate of "+jZ.ratio();
+	</script>
+</body>
+</html>
