@@ -3,29 +3,49 @@
 <head>
 	<title>JSON Zipper</title>
 	<meta http-equiv="Cache-Control" content="no-store" />
+	<script>
+	var sT = Date.now();
+	</script>
 	<script src="testFile.js"></script>
 	<script src="jsonZipper.js"></script>
 	<script>
 	</script>
 </head>
 <body>
-	<p id="out">Testing...</p>
+	<p id="zip">Compressing...</p>
+	<p id="unzip">Extracting...</p>
+	<p id="total">Testing...</p>
 	<script type="text/javascript">
-	var start = Date.now();
-	var first = false;
-	var msTime = function(j) {
-		if (j) {
-			if (first) {
-				return new Date(j.timestamp) - first;
-			} else 
-				first = new Date(j.timestamp);
-		}
-		return 0;
-	};
-	var jZ = new jsonZipper(jsonObj,{identifiers:["type","selector"],exclude:["ti"],include:["isRelative","targetWidth","targetHeight"],remove:["timestamp"],add:{ti:msTime}});
-	var newObj = jZ.zip();
-	var end = Date.now();
-	document.getElementById('out').innerHTML = "Test took "+(end-start)+"ms to complete with a compression rate of "+jZ.ratio();
+		/* A anonymous function used to generate a new value for each object */		
+		var first = false;
+		var msTime = function(j) {
+			if (j) {
+				if (first) {
+					return new Date(j.timestamp) - first;
+				} else 
+					first = new Date(j.timestamp);
+			}
+			return 0;
+		};
+		
+		/* Create the jsonZipper object, with options */
+		var jZ = new jsonZipper(jsonObj,{identifiers:["type","selector"],exclude:["ti"],include:["isRelative","targetWidth","targetHeight","type","selector"],remove:["timestamp"],add:{ti:msTime}});
+		
+		/* Start the zipping process */
+		var start = Date.now();
+		var newObj = jZ.zip();
+		var end = Date.now();
+		document.getElementById('zip').innerHTML = "Zipping took "+(end-start)+"ms, with a compression ratio of "+jZ.ratio();
+
+		/* Load the zipped object, for extracting test */
+		jZ.load(newObj,true);
+		start = Date.now();
+		var origObj = jZ.unzip();
+		end = Date.now();
+		document.getElementById('unzip').innerHTML = "Unzipping took "+(end-start)+"ms, with a extraction ratio of "+jZ.ratio();
+
+		var eT = Date.now();
+		document.getElementById('total').innerHTML = "Total test used "+(eT-sT)+"ms to complete";
 	</script>
 </body>
 </html>
