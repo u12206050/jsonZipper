@@ -9,7 +9,7 @@ Options:
 	Remove certain keys and their values.
 	Add keys and value returned via function call.
 	
-Cheack the text.html for a short example. Also, if you want just replace the json object within jsonFile.js with your own json object to see how it works.
+Check the text.html for a short example. Also, if you want just replace the json object within jsonFile.js with your own json object to see how it works.
 
 NB: Not for deep objects. If you want to compress an object with layers, do it manually with stages, calling my function only with a simple object.
 
