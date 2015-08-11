@@ -1,88 +1,95 @@
 var jsonZipper = (function(){
 	var jz = function(_jsonObj, _options) {
 		var Z = this;
-		var MAP = {};
-		var rMAP = {};
-		var opts = _options && typeof(_options) !== "boolean" ? _options : {};
-		/* []: An array of key names that will be used as identifiers.
-				WARGING: Should be within every object, but repeating.
-				Hint: Most common values that can be guessed/used from previous objects */
-		Z.identifiers = opts.identifiers || [];
-		/* boolean: If _jsonObj is an array or not */
-		Z.isArray = opts.isArray || _jsonObj.constructor === Array;
-		/* []: An array of key names not to map or zip */
-		Z.exclude = opts.exclude || false;
-		/* []: An array of key names which values to include in mapping */
-		Z.include = opts.include || false;
-		/* []: An array of key names to be removed from the object */
-		Z.remove = opts.remove || false;
-		/* {}: An object containing key(s) to add, with function(s) which return the value */
-		Z.add = opts.add || false;	
-		Z.status = "ready to load object";
+		var MAP = [];
+		var opts = _options && typeof(_options) !== "boolean" ? _options : {};		
 		
 		/* Public Functions */
 		
 		Z.zip = function() {
 			if (Z.status === "zipable") {
-				var J = nextObj(true);
-				while (J !== false) {
-					if (Z.add) {
-						for (var key in Z.add) {	  
-							if(Z.add.hasOwnProperty(key)){
-								J[key] = Z.add[key](J);
-							}
-						}
+				Z.uzOpts = {I:[],A:Z.isArray,eC:[],iC:[]};
+				if (Z.isArray) {
+					var x = 0;
+					var y = Z.JO.length;
+					while (x < y) {
+						compress(Z.JO[x++]);
 					}
-					compress(J);
-					J = nextObj();
-				}
-				for (var mkey in MAP) {	  
-					if(MAP.hasOwnProperty(mkey) && MAP[mkey] == mkey){
-						delete(MAP[mkey]);
-					}
-				}
-				var uzOpts = {I:[],A:Z.isArray,eC:[],iC:[]};
-				for (var rkey in rMAP) {	  
-					if(rMAP.hasOwnProperty(rkey)){
-						if (Z.identifiers.indexOf(rkey) > -1) {
-							uzOpts.I.push(rMAP[rkey]);
-						}
-						if (Z.exclude.indexOf(rkey) > -1) {
-							uzOpts.eC.push(rMAP[rkey]);
-						}
-						if (Z.include.indexOf(rkey) > -1) {
-							uzOpts.iC.push(rMAP[rkey]);
-						}
-					}
+				} else {
+					compress(Z.JO);
 				}
 				Z.status = "zipped";
-				return {M:MAP,D:Z.JO,O:uzOpts};
+				return {M:MAP,D:Z.JO,O:Z.uzOpts};
 			} return false;
 		};
-		Z.unzip = function() {
+		Z.unzip = function() {			
 			if (Z.status === "unzipable") {
-				var J = nextObj(true);
-				while (J !== false) {
-					if (Z.add) {
-						for (var key in Z.add) {	  
-							if(Z.add.hasOwnProperty(key)){
-								J[key] = Z.add[key](J);
-							}
-						}
+				if (Z.isArray) {
+					var x = 0;
+					var y = Z.JO.length;
+					while (x < y) {
+						extract(Z.JO[x++]);
 					}
-					extract(J);
-					J = nextObj();
+				} else {
+					extract(Z.JO);
 				}
 				Z.status = "unzipped";
 				return Z.JO;
 			} return false;
 		};
-		Z.ratio = function(result) {
-			var endL = JSON.stringify(Z.JO).length+JSON.stringify(MAP).length;
-			return ((Z.startLength/endL * 100) - 100) + ' % ::: from '+Z.startLength+' to '+endL;
+		Z.compress = function(obj) {
+			if (Z.status === "compressing") {
+				Z.JO.push(obj);
+				compress(obj);
+			} else if (Z.status === "ready to load object") {
+				Z.isArray = true;
+				Z.uzOpts = {I:[],A:Z.isArray,eC:[],iC:[]};
+				Z.status = "compressing";
+				Z.JO = [];
+				Z.JO.push(obj);
+				compress(obj);
+			} else return false;
+			return {M:MAP,D:Z.JO,O:Z.uzOpts};
 		};
+		var prevExtractIndex = false; 
+		var extracted = [];
+		Z.extract = function(i) {
+			if (Z.status === "unzipable" || Z.status === "zipped") {
+				if (extracted.indexOf(i) > -1) {					
+					prev = Z.JO[i];
+				} else {
+					if (!prevExtractIndex || prevExtractIndex+1 !== i) {
+						setPrev(i);
+					}
+					extract(Z.JO[i]);
+					extracted.push(i);
+				}
+				prevExtractIndex = i;
+			}
+			return Z.JO[i];
+		};
+		Z.length = function() {
+			return JSON.stringify(Z.JO).length + (MAP ? JSON.stringify(MAP).length : 0);
+		};
+		Z.options = function(opts,isArray) {
+			/* []: An array of key names that will be used as identifiers.
+				WARGING: Should be within every object, but repeating, NO Booleans or Integers allowed.
+				Hint: Most common values that can be guessed/used from previous objects */
+			Z.identifiers = opts.identifiers || [];
+			/* boolean: If _jsonObj is an array or not */
+			Z.isArray = opts.isArray || isArray;
+			/* []: An array of key names not to map or zip */
+			Z.exclude = opts.exclude || [];
+			/* []: An array of key names which values to include in mapping will need identifiers */
+			Z.include = opts.include || [];
+			/* []: An array of key names to be removed from the object */
+			Z.remove = opts.remove || false;
+			/* {}: An object containing key(s) to add, with function(s) which return the value */
+			Z.add = opts.add || false;	
+		}
 		Z.load = function(_jsonObj, isJZobj) {
 			Z.startLength = 0;
+			MAP = [];
 			try {
 				var stringIT = JSON.stringify(_jsonObj);
 				Z.startLength = stringIT.length;
@@ -91,85 +98,85 @@ var jsonZipper = (function(){
 			catch (err) {
 				throw "The json object has recursive references or is too big to load into memory";
 			}
-			if (isJZobj && Z.JO.D && Z.JO.O && Z.JO.M) {
-				MAP = Z.JO.M;
-				Z.identifiers = Z.JO.O.I || [];
-				Z.isArray = Z.JO.O.A;
-				Z.exclude = Z.JO.O.eC || false;
-				Z.include = Z.JO.O.iC || false;
-				Z.JO = Z.JO.D;
-				Z.remove = false;
-				Z.add = false;	
-				Z.status = "unzipable";
-			} else {
-				Z.status = "zipable";
+
+			Z.status = "zipable";
+			if (isJZobj) {
+				if (Z.JO.D && Z.JO.O && Z.JO.M) {
+					MAP = Z.JO.M;
+					Z.identifiers = Z.JO.O.I || [];
+					Z.isArray = Z.JO.O.A;
+					Z.exclude = Z.JO.O.eC || false;
+					Z.include = Z.JO.O.iC || false;
+					Z.JO = Z.JO.D;
+					Z.remove = false;
+					Z.add = false;	
+					Z.status = "unzipable";
+				} else 
+					Z.options(isJZobj,_jsonObj.constructor === Array);
 			}
+			prev = false;
+			prevID = false;
 		};
 		
 		/* Private Functions */
-		
-		var arrI = 0;
-		var obj = false;
-		var nextObj = function(first) {
-			if (first) {
-				arrI = 0;
-				obj = false;
-			}
-			if (Z.isArray) {
-				if (Z.JO[arrI])
-					return Z.JO[arrI++];
-				else
-					arrI = 0;
-			} else {
-				obj = !obj;
-				if (obj)
-					return Z.JO;
-			}
-			return false;
-		};
-		/* Compress the given object, taking note of the previous object */
-		var pIdentifiers = [];
-		var prev = false;
-		var compress = function(J) {
-			var keys = Object.keys(J);
-			var i=0;
-			var prevSame = prev ? true : false;
-			if (Z.identifiers) {
-				var x=0;
-				for (xend=Z.identifiers.length; x<xend; x++) {
-					var ikey = Z.identifiers[x];
-					if (rMAP[J[ikey]]) {
-						J[ikey] = rMAP[J[ikey]];
-					} else {
-						J[ikey] = generateKey(J[ikey],true);
-					}
-					if (!prevSame || pIdentifiers[x]!==J[ikey]) {
-						prevSame = false;
-						prev = J;
-						pIdentifiers[x] = J[ikey];
-					}	
+
+		var getID = function(key, value) {	
+			var mI = MAP.indexOf(key);
+			if (mI < 0) {
+				if (value) {
+					return MAP.push(key) - 1;
 				}
+				if (Z.exclude.indexOf(key) > -1) {
+					Z.uzOpts.eC.push(key);
+					return key;
+				} else {
+					mI = MAP.push(key) - 1;
+					if (Z.identifiers.indexOf(key) > -1) {
+						Z.uzOpts.I.push(mI);
+					}
+					if (Z.include.indexOf(key) > -1) {
+						Z.uzOpts.iC.push(mI);
+					}
+				}				
 			}
+			return mI;
+		};
+
+		/* Compress the given object, taking note of the previous object */
+		var prev = false;
+		var prevID = false;
+		var compress = function(J) {
+			add(J);
+			var keys = Object.keys(J);
+			var prevSame = prev ? true : false;
+			var id = '';
+			var i=0;
+			for (xend=Z.identifiers.length; i<xend; i++) {
+				var ikey = Z.identifiers[i];
+                J[ikey] = getID(J[ikey],1);
+				id += J[ikey];
+			}
+			if (!prevSame || !prevID || prevID !== id) {
+				prevSame = false;
+				prev = J;
+				prevID = id; 
+			}
+			i=0;
 			for (iend=keys.length; i<iend; i++) {
 				var key = keys[i];
-				var value = J[key];
 				if (Z.remove && Z.remove.indexOf(key) > -1)
 					delete J[key];
 				else {
-					var nID = key;
-					if (rMAP[key] && MAP[rMAP[key]] === key) {
-						nID = rMAP[key];
-					} else {
-						nID = generateKey(key);
-					}
-					if (Z.include.indexOf(key) > -1) {
-						if (prevSame && prev[nID] === value) {	
-							delete J[key];
-							nID = key;
-						}
-					}
-					if (nID !== key) {
-						J[nID] = J[key];
+					var mI = getID(key);
+					if (prevSame && (MAP[prev[mI]] === J[key] || prev[mI] === J[key]))
+						delete J[key];
+					else if (Z.include.indexOf(key) > -1) {
+						if (Z.identifiers.indexOf(key) > -1) 
+							J[mI] = J[key];
+						else J[mI] = getID(J[key],1);
+						delete J[key];
+					} else if (mI !== key) {
+						J[mI] = J[key];
 						delete J[key];
 					}
 				}
@@ -178,104 +185,104 @@ var jsonZipper = (function(){
 		
 		/* Extract the given object, taking note of the previous object */
 		var extract = function(J) {
-			var prevSame = isSame(prev, J);
-			if (prevSame) {
-				if (Z.include.length > 0) {
-					var ic = 0;
-					for (xend=Z.include.length; ic<xend; ic++) {
-						var icKey = Z.include[ic];
-						var mKey = MAP[icKey];
-						J[icKey] = prev[mKey];
-					}
-				}
-			} else {
-				prev = J;
-			}
-			var keys = Object.keys(J);	
-			if (!prevSame && Z.identifiers) {
+			if (J === prev)
+				return;
+			add(J);
+			var prevSame = Z.isArray ? isSame(prev, J) : false;			
+			var keys = Object.keys(J);
+			if (prevSame)
+				extend(prev,J);
+			else if (Z.identifiers) {
 				var x=0;
 				for (xend=Z.identifiers.length; x<xend; x++) {
 					var ikey = Z.identifiers[x];
-					if (MAP[J[ikey]]) {
-						J[ikey] = MAP[J[ikey]];
-					} else
-						throw "MAP is corrupted, key can not be found";	
+					J[ikey] = MAP[J[ikey]];
 				}
 			}
 			var i=0;
 			for (iend=keys.length; i<iend; i++) {
-				var key = keys[i];
+				var key = keys[i]*1;
 				var value = J[key];
 				if (Z.remove && Z.remove.indexOf(key) > -1)
 					delete J[key];
 				else {
-					if (MAP[key]) {
-						J[MAP[key]] = J[key];
-						delete J[key];
+					if (Z.exclude.indexOf(key) > -1) {
+						J[key] = J[key];
+						if (Z.include.indexOf(key) > -1)
+							J[key] = MAP[J[key]];
 					} else {
-						if (Z.exclude.indexOf(key) === -1)
-							throw "MAP is corrupted, key can not be found";
-					}	
+						if (Z.include.indexOf(key) > -1)
+							J[MAP[key]] = MAP[J[key]];
+						else 
+							J[MAP[key]] = J[key];
+						delete J[key];
+					}
+				}
+			}
+			prev = J;
+		};
+		/* Add the additional keys and values to the given object */
+		var add = function(J) {
+			if (Z.add) {
+				for (var key in Z.add) {	  
+					if('undefined' !== typeof Z.add[key]){
+						if (typeof(Z.add[key]) === "function")
+							J[key] = Z.add[key](J);
+						else
+							J[key] = Z.add[key];
+					}
 				}
 			}
 		};
+		/* Set the previous full object from the current index, incl. */
+		var setPrev = function(i) {
+			if (i > 0) {
+				var x=0;
+				for (xend=Z.identifiers.length; x<xend; x++) {
+					if ('undefined' === typeof Z.JO[i][Z.identifiers[x]]) {
+						setPrev(i-1);
+						return;
+					}
+				}
+				extract(Z.JO[i]);
+			} else 
+				extract(Z.JO[0]);
+		};
 		/* Checks if identiifiers match */
 		var isSame = function(obj1, obj2) {
-			if (Z.identifiers && obj1 && obj2) {
+			if (Z.identifiers && obj1 && obj2 && obj1 !== obj2) {
 				var x=0;
 				for (xend=Z.identifiers.length; x<xend; x++) {
 					var key = Z.identifiers[x];
-					var mKey = MAP[Z.identifiers[x]]
-					if (obj1.hasOwnProperty(mKey)) {
-						if(obj2.hasOwnProperty(key) && MAP[obj2[key]] !== obj1[mKey])
-							return false;
-					} else return false;
+					var mKey = MAP[Z.identifiers[x]];
+					if ('undefined' === typeof obj1[mKey] || ('undefined' !== typeof obj2[key] && MAP[obj2[key]] !== obj1[mKey]))
+						return false;					
 				}
 			} else return false;
 			return true;
 		};
-		/* Merges an object into the first one, replacing values from the second object into the first if duplicate keys exist */
+		/* Merges an object by reference into the first one, replacing values from the second object into the first if duplicate keys exist */
 		var merge = function(obj1,obj2) {
 			for (var key in obj2) {	  
-				if(obj2.hasOwnProperty(key)) {
+				if('undefined' !== typeof obj2[key]) {
 					obj1[key] = obj2[key];
 				}
 			}
 		};
-		/* Generates a map of ids with the keys of the jsonObj */
-		var charIDs = [64];
-		var nextAscii = function(i) {
-			if (i >= charIDs.length)
-				charIDs.push(64);
-			charIDs[i]++;
-			switch(charIDs[i]) {
-				case 91 : charIDs[i] = 97; break;
-				case 123 : charIDs[i] = 65; nextAscii(i+1); break;
+		/* Adds all keys and values from the base to obj2 for each key that does not exist in obj2 */
+		var extend = function(base,obj2) {
+			for (var key in base) {	  
+				if('undefined' === typeof obj2[key]) {
+					obj2[key] = base[key];
+				}
 			}
 		};
-		var newKey = function() {
-			nextAscii(0);
-			var k = '';
-			for (var i=0; i<charIDs.length; i++)
-				k = String.fromCharCode(charIDs[i]) + k;
-			if (MAP[k])
-				k = newKey();
-			return k;
-		};
-		var generateKey = function(key,value) {
-			var nID = key;
-			if (!value && Z.exclude && Z.exclude.indexOf(key) > -1) {
-				rMAP[key] = key;
-				MAP[key] = key;
-			} else {
-				nID = newKey();
-				rMAP[key] = nID;
-				MAP[nID] = key;
-			}
-			return nID;
-		};
+
+		Z.setID = opts.setID || false;
+		Z.options(opts,_jsonObj.constructor === Array)
+		Z.status = "ready to load object";
 		
-		/* Check if object is given */
+		/* Check if object is given and if options is object or 'compressed' flag */
 		if (_jsonObj && typeof(_jsonObj) === "object") {
 			/* When unzipping an object ensure _options is true and not an object, once loaded, you can set the options */
 			if (_options && typeof(_options) === "boolean") {

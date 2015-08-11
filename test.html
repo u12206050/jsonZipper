@@ -3,17 +3,29 @@
 <head>
 	<title>JSON Zipper</title>
 	<meta http-equiv="Cache-Control" content="no-store" />
-	<script>
-	var sT = Date.now();
+	<script>	
+		var exratio = function(startL,endL) {
+			return ((endL/startL * 100) - 100) + ' % ::: from '+startL+' to '+endL;
+		};
+		var ratio = function(startL,endL) {
+			return ((startL/endL * 100) - 100) + ' % ::: from '+startL+' to '+endL;
+		};
+		var sT = performance.now();
+		/* Which index range in the array to extract after compressing */
+		var startIndex = 169;
+		var endIndex = 169;
 	</script>
 	<script src="testFile.js"></script>
 	<script src="jsonZipper.js"></script>
-	<script>
-	</script>
+	<style type="text/css">
+		textarea {
+			width: 900px;
+			height: 100px;
+		}
+	</style>
 </head>
 <body>
-	<p id="zip">Compressing...</p>
-	<p id="unzip">Extracting...</p>
+	<textarea id="jsonZipper">jsonZipper...</textarea>
 	<p id="total">Testing...</p>
 	<script type="text/javascript">
 		/* A anonymous function used to generate a new value for each object */		
@@ -27,24 +39,68 @@
 			}
 			return 0;
 		};
-		
-		/* Create the jsonZipper object, with options */
-		var jZ = new jsonZipper(jsonObj,{identifiers:["type","selector"],exclude:["ti"],include:["isRelative","targetWidth","targetHeight","type","selector"],remove:["timestamp"],add:{ti:msTime}});
-		
-		/* Start the zipping process */
-		var start = Date.now();
-		var newObj = jZ.zip();
-		var end = Date.now();
-		document.getElementById('zip').innerHTML = "Zipping took "+(end-start)+"ms, with a compression ratio of "+jZ.ratio();
+		/* 
+			Create the jsonZipper object to compress as a stream, with options.
+			To compress entire object, just replace false with jsonObj (your object array)
+		*/
 
-		/* Load the zipped object, for extracting test */
-		jZ.load(newObj,true);
-		start = Date.now();
-		var origObj = jZ.unzip();
-		end = Date.now();
-		document.getElementById('unzip').innerHTML = "Unzipping took "+(end-start)+"ms, with a extraction ratio of "+jZ.ratio();
+		var jZ = new jsonZipper(false/* or jsonObj */,{identifiers:["type","selector"]/*,exclude:["ti"]*/,include:["isRelative","targetWidth","targetHeight"]/*,remove:["timestamp"],add:{ti:msTime}*/});
 
-		var eT = Date.now();
+		/* 
+			For stats 
+		*/
+		var startLength = JSON.stringify(jsonObj).length;		
+		var i = 0;
+		var arrLength = jsonObj.length;
+		/* 
+			Start the zipping process as a stream, taking time for first object
+			Note: could also just use jZ.zip();	to zip entire object.
+		*/
+		var fS = performance.now();
+			var zippedObj = jZ.compress(jsonObj[i++]);
+		var fE = performance.now();	
+		/* Continue with rest of objects */
+		var start = performance.now();
+		while (i<arrLength)
+			zippedObj = jZ.compress(jsonObj[i++]);	
+		var end = performance.now();
+
+		/*
+			Output the compression statistics
+		*/
+		var endLength = jZ.length();
+		document.getElementById('jsonZipper').innerHTML += "\nZipping first object took "+(fE-fS)+"ms";
+		document.getElementById('jsonZipper').innerHTML += "\nZipping took "+((end-start)+(fE-fS))+"ms, with a compression ratio of "+ratio(startLength,endLength);
+
+		/* 
+			Load the zipped object, for extracting test
+			Set counter for index range
+		*/		
+		jZ.load(zippedObj,true);
+		i = startIndex;
+		var extractObj = [];			
+		//extractObj = jZ.unzip(); /* Optional way to extract everything */
+		/* Stats for extracting just one object */
+		startLength = endLength;
+		fS = performance.now();
+			extractObj.push(jZ.extract(i++));
+		fE = performance.now();
+		start = performance.now();	
+			while (i<endIndex) {
+				extractObj.push(jZ.extract(i++));
+			}
+		end = performance.now();
+		endLength = jZ.length();
+		/*
+			Output the extraction statistics
+		*/
+		sL = jZ.length();
+		document.getElementById('jsonZipper').innerHTML += "\nGetting first object @ index "+startIndex+" took: "+(fE-fS)+"ms";
+		document.getElementById('jsonZipper').innerHTML += "\nGetting objects from "+startIndex+" to "+endIndex+" took: "+((end-start)+(fE-fS))+"ms, with a extraction ratio of "+exratio(startLength,endLength);
+		//document.getElementById('jsonZipper').innerHTML += "\nGetting all objects from took: "+(end-start)+"ms, with a extraction ratio of "+exratio(eL,sL);
+
+		/* Total test stats */
+		var eT = performance.now();
 		document.getElementById('total').innerHTML = "Total test used "+(eT-sT)+"ms to complete";
 	</script>
 </body>
