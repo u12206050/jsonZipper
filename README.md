@@ -58,4 +58,3 @@ Note however: if your data is a Homogeneous Collection (Exactly Same keys then h
 Check the test.html for a short example. Also, if you want just replace the json object within jsonFile.js with your own json object to see how it works.
 
 NB: Not yet for deep objects. If you want to compress an object with layers, do it manually with stages, calling compress function only with a simple object.
-=======
