@@ -24,21 +24,35 @@ Most other compression algorithms have to compress&extract all the data at once.
 API
 ---
 Compressing:
+
 	var jZ = new jsonZipper(jsonObj || false, [options]);
+	
 	jZ.zip() if jsonObj was specified
+	
 	jZ.compress(obj) if false, and compressing one object at a time
 	
+	
 Extracting
+
 	var jZ = new jsonZipper(zippedObj,true);
+	
 	jZ.unzip() extract entire object
+	
 		OR
+		
 	jZ.extract(index) extract the object at given index
+	
 	
 Other:
 	var jZ = new jsonZipper();
+	
 	Z.load(jsonObj,false);
+	
 	Z.load(zippedObj,true);
+	
 	Z.(option_name) = value;
+	
+	
 Options:
 
 	identifiers []: An array of key names that will be used as identifiers.
