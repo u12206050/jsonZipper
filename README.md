@@ -4,6 +4,7 @@ Description: A json object compressor and decompressor written in JavaScript
 How: Creates a map array of the keys, together with optional included values.
 
 Options:
+<<<<<<< HEAD
 	identifiers []: An array of key names that will be used as identifiers.
 		WARGING: Should be within every object, but repeating, NO Booleans or Integers allowed.
 		Hint: Most common values that can be guessed/used from previous objects. 
@@ -36,3 +37,16 @@ large(9,90 MB) - 3445841 to 3446125 in 0.56ms
 
 
 Note however: if your data is a Homogeneous Collection (Exactly Same keys then hpack will be better.)
+=======
+	Exclude shortening of certain keys and values.
+	Include shortening of values.
+	Remove certain keys and their values.
+	Add keys and value returned via function call.
+	
+Check the text.html for a short example. Also, if you want just replace the json object within jsonFile.js with your own json object to see how it works.
+
+NB: Not for deep objects. If you want to compress an object with layers, do it manually with stages, calling my function only with a simple object.
+
+To come: Adding the map from a previous object, to just add to it.
+LOTS MORE, check the commit history.
+>>>>>>> 5663c04248d58adb9bd04648e6ae9671de12feb8
