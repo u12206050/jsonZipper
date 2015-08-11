@@ -4,10 +4,41 @@ Author: Gerard Lamusse
 
 Description: A json object compressor and decompressor written in JavaScript
 
-Why: Awesome for multiple similar repeated objects
+Why: For multiple similar repeated objects that are not Homogeneous
 
 How: Creates a map array of the keys, together with optional included values.
 
+JsonZipper is also great if you want to still preserve the notion of objects.
+
+Compress on the go
+---
+So basically as you are generating data objects, you can compress them, leaving you to always have a small memory footprint.
+
+Extract what you need
+---
+It allows you to use an object in its' 'zipped' state by only extracting one object by index from the array, so memory wise it is great as it will always only have extracted what you want.
+
+
+Most other compression algorithms have to compress&extract all the data at once.
+
+API
+---
+Compressing:
+	var jZ = new jsonZipper(jsonObj || false, [options]);
+	jZ.zip() if jsonObj was specified
+	jZ.compress(obj) if false, and compressing one object at a time
+	
+Extracting
+	var jZ = new jsonZipper(zippedObj,true);
+	jZ.unzip() extract entire object
+		OR
+	jZ.extract(index) extract the object at given index
+	
+Other:
+	var jZ = new jsonZipper();
+	Z.load(jsonObj,false);
+	Z.load(zippedObj,true);
+	Z.(option_name) = value;
 Options:
 
 	identifiers []: An array of key names that will be used as identifiers.
@@ -25,17 +56,9 @@ Options:
 	remove []: An array of key names to be removed from the object.
 	
 	add {}: An object containing key(s) to add, with function(s) which return the value.	
-
-JsonZipper is also great if you want to still preserve the notion of objects.
-
-It allows you to use an object in its' 'zipped' state by only extracting one object by index from the array, so memory wise it is great as it will always only have extracted what you want.
-
-Compress on the go, so basically as you are generating data objects, you can compress them, leaving you to always have a small memory footprint.
-
-Most other compression algorithms have to compress&extract all the data at once.
-
-
-STATS compressing(Times vary on each test):
+STATS
+---
+Compressing(Times vary on each test):
 
 	small(1,01 KB) - 1024 to 813 in 1.21ms
 
@@ -44,7 +67,7 @@ STATS compressing(Times vary on each test):
 	large(9,90 MB) - 10389101 to 3445841 in 414.42ms
 
 
-STATS extracting(one object at random index):
+Extracting(one object at random index):
 
 	small(1,01 KB) - 813 to 827 in 0.08ms
 
@@ -52,8 +75,9 @@ STATS extracting(one object at random index):
 
 	large(9,90 MB) - 3445841 to 3446125 in 0.56ms
 
-
-Note however: if your data is a Homogeneous Collection (Exactly Same keys then hpack will be better.)
+Notes
+---
+Homogeneous?: if your data is a Homogeneous Collection (Exactly Same keys then hpack will be better.)
 
 Check the test.html for a short example. Also, if you want just replace the json object within jsonFile.js with your own json object to see how it works.
 
