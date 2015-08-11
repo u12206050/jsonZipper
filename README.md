@@ -9,6 +9,7 @@ Why: Awesome for multiple similar repeated objects
 How: Creates a map array of the keys, together with optional included values.
 
 Options:
+
 	identifiers []: An array of key names that will be used as identifiers.
 	
 		WARGING: Should be within every object, but repeating, NO Booleans or Integers allowed.
@@ -36,20 +37,20 @@ Most other compression algorithms have to compress&extract all the data at once.
 
 STATS compressing(Times vary on each test):
 
-small(1,01 KB) - 1024 to 813 in 1.21ms
+	small(1,01 KB) - 1024 to 813 in 1.21ms
 
-medium(101 KB) - 104418 to 36045 in 5.54ms
+	medium(101 KB) - 104418 to 36045 in 5.54ms
 
-large(9,90 MB) - 10389101 to 3445841 in 414.42ms
+	large(9,90 MB) - 10389101 to 3445841 in 414.42ms
 
 
 STATS extracting(one object at random index):
 
-small(1,01 KB) - 813 to 827 in 0.08ms
+	small(1,01 KB) - 813 to 827 in 0.08ms
 
-medium(101 KB) - 36045 to 36329 in 0.24ms
+	medium(101 KB) - 36045 to 36329 in 0.24ms
 
-large(9,90 MB) - 3445841 to 3446125 in 0.56ms
+	large(9,90 MB) - 3445841 to 3446125 in 0.56ms
 
 
 Note however: if your data is a Homogeneous Collection (Exactly Same keys then hpack will be better.)
