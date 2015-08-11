@@ -1,3 +1,10 @@
+/* 
+	Author: Gerard Lamusse
+	Created: 08/2015
+	Version: 1.0
+	URL: https://github.com/u12206050/jsonZipper
+*/
+
 var jsonZipper = (function(){
 	var jz = function(_jsonObj, _options) {
 		var Z = this;
