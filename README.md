@@ -29,28 +29,38 @@ Compressing:
 	
 	jZ.zip() if jsonObj was specified
 	
-	jZ.compress(obj) if false, and compressing one object at a time
+	jZpart = jZ.compress(obj) if false, and compressing one object at a time
 	
 	
 Extracting
 
-	var jZ = new jsonZipper(zippedObj,true);
+	var jZ = new jsonZipper(zippedObj || false,true);
+	
+		IF false			::: WARNING, don't mix extration methods
+		
+	jZ.extract(jZpart) have to build map then from start, so start with first object 
+	
+		ELSE		
 	
 	jZ.unzip() extract entire object
 	
 		OR
 		
-	jZ.extract(index) extract the object at given index
+	jZ.extract(index) extract the object at given index	
 	
 	
 Other:
 	var jZ = new jsonZipper();
 	
-	Z.load(jsonObj,false);
+	jZ.load(jsonObj,false,[options]);
 	
-	Z.load(zippedObj,true);
+	jZ.load(zippedObj,true,[options]);
 	
-	Z.(option_name) = value;
+	jZ.(option_name) = value;
+	
+	jZ.reset();
+		
+		::: Clears all data except options, useful when you want to start extracting directly after compressing.
 	
 	
 Options:

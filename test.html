@@ -12,8 +12,8 @@
 		};
 		var sT = performance.now();
 		/* Which index range in the array to extract after compressing */
-		var startIndex = 169;
-		var endIndex = 169;
+		var startIndex = 0;
+		var endIndex = 0;
 	</script>
 	<script src="testFile.js"></script>
 	<script src="jsonZipper.js"></script>
@@ -44,27 +44,31 @@
 			To compress entire object, just replace false with jsonObj (your object array)
 		*/
 
-		var jZ = new jsonZipper(false/* or jsonObj */,{identifiers:["type","selector"]/*,exclude:["ti"]*/,include:["isRelative","targetWidth","targetHeight"]/*,remove:["timestamp"],add:{ti:msTime}*/});
+		var jZ = new jsonZipper(false/* or jsonObj */,{identifiers:["type"]/*,exclude:["ti"]*/,include:["isRelative","targetWidth","targetHeight","selector"]/*,remove:["timestamp"],add:{ti:msTime}*/});
 
 		/* 
 			For stats 
 		*/
-		var startLength = JSON.stringify(jsonObj).length;		
+			
+		var tmpObj  = JSON.stringify(jsonObj);
+		var startLength = JSON.stringify(jsonObj).length;
+		tmpObj = JSON.parse(tmpObj);
 		var i = 0;
 		var arrLength = jsonObj.length;
 		/* 
 			Start the zipping process as a stream, taking time for first object
 			Note: could also just use jZ.zip();	to zip entire object.
 		*/
+		var zippedObj = [];
 		var fS = performance.now();
-			var zippedObj = jZ.compress(jsonObj[i++]);
-		var fE = performance.now();	
+			zippedObj.push(jZ.compress(tmpObj[i++]));
+		var fE = performance.now();
 		/* Continue with rest of objects */
 		var start = performance.now();
+		//var zippedObj = jZ.zip();
 		while (i<arrLength)
-			zippedObj = jZ.compress(jsonObj[i++]);	
+			zippedObj.push(jZ.compress(tmpObj[i++]));	
 		var end = performance.now();
-
 		/*
 			Output the compression statistics
 		*/
@@ -76,19 +80,22 @@
 			Load the zipped object, for extracting test
 			Set counter for index range
 		*/		
-		jZ.load(zippedObj,true);
+		
 		i = startIndex;
-		var extractObj = [];			
+		endIndex = arrLength;
+		var extractObj = [];
+		jZ.reset();	
 		//extractObj = jZ.unzip(); /* Optional way to extract everything */
 		/* Stats for extracting just one object */
 		startLength = endLength;
 		fS = performance.now();
-			extractObj.push(jZ.extract(i++));
+			extractObj.push(jZ.extract(zippedObj[i++]));
 		fE = performance.now();
 		start = performance.now();	
-			while (i<endIndex) {
-				extractObj.push(jZ.extract(i++));
-			}
+			while (i<endIndex)
+				extractObj.push(jZ.extract(zippedObj[i++]));	
+			//jZ.load(zippedObj,true);
+			//extractObj = jZ.unzip();
 		end = performance.now();
 		endLength = jZ.length();
 		/*
@@ -96,12 +103,15 @@
 		*/
 		sL = jZ.length();
 		document.getElementById('jsonZipper').innerHTML += "\nGetting first object @ index "+startIndex+" took: "+(fE-fS)+"ms";
-		document.getElementById('jsonZipper').innerHTML += "\nGetting objects from "+startIndex+" to "+endIndex+" took: "+((end-start)+(fE-fS))+"ms, with a extraction ratio of "+exratio(startLength,endLength);
-		//document.getElementById('jsonZipper').innerHTML += "\nGetting all objects from took: "+(end-start)+"ms, with a extraction ratio of "+exratio(eL,sL);
+		document.getElementById('jsonZipper').innerHTML += "\nGetting objects from "+startIndex+" to "+arrLength+" took: "+((end-start)+(fE-fS))+"ms, with a extraction ratio of "+exratio(startLength,endLength);
+		//document.getElementById('jsonZipper').innerHTML += "\nGetting all objects from took: "+(end-start)+"ms, with a extraction ratio of "+exratio(startLength,endLength);
 
 		/* Total test stats */
 		var eT = performance.now();
 		document.getElementById('total').innerHTML = "Total test used "+(eT-sT)+"ms to complete";
+		for (var tI=0; tI < jsonObj.length; tI += tI+1) {
+			console.log(tI + ' : ' + Object.keys(jsonObj[tI]).length + '==' + Object.keys(extractObj[tI]).length + ' ? ' + !!(JSON.stringify(jsonObj[tI]).length === JSON.stringify(extractObj[tI]).length));
+		}
 	</script>
 </body>
 </html>

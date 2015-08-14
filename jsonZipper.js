@@ -6,16 +6,15 @@
 */
 
 var jsonZipper = (function(){
-	var jz = function(_jsonObj, _options) {
+	var jz = function(_jsonObj, _options, _zipped) {
 		var Z = this;
 		var MAP = [];
-		var opts = _options && typeof(_options) !== "boolean" ? _options : {};		
-		
+		var miniMap = false;		
+		Z.loMem = true;
 		/* Public Functions */
 		
 		Z.zip = function() {
 			if (Z.status === "zipable") {
-				Z.uzOpts = {I:[],A:Z.isArray,eC:[],iC:[]};
 				if (Z.isArray) {
 					var x = 0;
 					var y = Z.JO.length;
@@ -26,7 +25,7 @@ var jsonZipper = (function(){
 					compress(Z.JO);
 				}
 				Z.status = "zipped";
-				return {M:MAP,D:Z.JO,O:Z.uzOpts};
+				return {M:MAP,D:Z.JO};
 			} return false;
 		};
 		Z.unzip = function() {			
@@ -46,83 +45,121 @@ var jsonZipper = (function(){
 		};
 		Z.compress = function(obj) {
 			if (Z.status === "compressing") {
+				miniMap = [];
 				Z.JO.push(obj);
 				compress(obj);
 			} else if (Z.status === "ready to load object") {
 				Z.isArray = true;
-				Z.uzOpts = {I:[],A:Z.isArray,eC:[],iC:[]};
 				Z.status = "compressing";
 				Z.JO = [];
+				MAP = [];
+				miniMap = [];
 				Z.JO.push(obj);
 				compress(obj);
 			} else return false;
-			return {M:MAP,D:Z.JO,O:Z.uzOpts};
+			return miniMap.length > 0 ? [obj,miniMap] : [obj];
+		};
+		Z.getCompressed = function() {
+			return {M:MAP,D:Z.JO};
+		};
+		Z.reset = function() {
+			Z.JO = [];
+			MAP = [];
+			miniMap = [];
+			extracted = [];
+			prevExtractIndex = false; 
+			Z.status = "ready to load object";
 		};
 		var prevExtractIndex = false; 
 		var extracted = [];
-		Z.extract = function(i) {
-			if (Z.status === "unzipable" || Z.status === "zipped") {
-				if (extracted.indexOf(i) > -1) {					
-					prev = Z.JO[i];
-				} else {
-					if (!prevExtractIndex || prevExtractIndex+1 !== i) {
-						setPrev(i);
+		Z.extract = function(ioro) {
+			var i = 0;
+			if (Z.status === "unzipable" || Z.status === "zipped" || Z.status === "ready to load object") {
+				var tmp = null;
+				if (ioro.constructor === Array) {
+					tmp = ioro[0];
+					i = Z.JO.indexOf(tmp);
+					if (i < 0 || (Z.loMem && prevExtractIndex !== i)) {
+						if (i < 0) {
+							if (Z.loMem)
+								tmp = JSON.parse(JSON.stringify(ioro[0]));
+							else i = Z.JO.push(tmp) - 1;
+							if (ioro.length > 1 && ioro[1].constructor === Array)
+								ioro[1].forEach(function(v){MAP.push(v);});
+						}
+						extract(tmp);
 					}
-					extract(Z.JO[i]);
-					extracted.push(i);
+				} else {
+					i = ioro*1;
+					if (i > -1) {
+						if (extracted.indexOf(i) > -1) {					
+							prev = Z.JO[i];
+						} else {
+							if (!prevExtractIndex || prevExtractIndex+1 !== ioro) {
+								setPrev(i);
+							}
+							extract(Z.JO[i]);
+							extracted.push(i);
+						}						
+					} else {
+						throw "Invalid Index: Could be you have just the zipped object, you need to extract it with jsonZipper.unzip()";
+					}
+					tmp = Z.JO[i];
 				}
 				prevExtractIndex = i;
+				return tmp;
 			}
-			return Z.JO[i];
+			return null;
 		};
 		Z.length = function() {
-			return JSON.stringify(Z.JO).length + (MAP ? JSON.stringify(MAP).length : 0);
+			return JSON.stringify(Z.JO).length;// + (MAP ? JSON.stringify(MAP).length : 0);
 		};
 		Z.options = function(opts,isArray) {
 			/* []: An array of key names that will be used as identifiers.
 				WARGING: Should be within every object, but repeating, NO Booleans or Integers allowed.
 				Hint: Most common values that can be guessed/used from previous objects */
-			Z.identifiers = opts.identifiers || [];
+			Z.identifiers = 'undefined' !== typeof opts.identifiers ? opts.identifiers : Z.identifiers || [];
 			/* boolean: If _jsonObj is an array or not */
-			Z.isArray = opts.isArray || isArray;
-			/* []: An array of key names not to map or zip */
-			Z.exclude = opts.exclude || [];
+			Z.isArray = 'undefined' !== typeof opts.isArray ? opts.isArray : Z.isArray || isArray;
+			/* []: An array of key names not to map or zip, can't include numbers, as this corresponds to indices*/
+			Z.exclude = 'undefined' !== typeof opts.exclude ? opts.exclude : Z.exclude || [];
 			/* []: An array of key names which values to include in mapping will need identifiers */
-			Z.include = opts.include || [];
+			Z.include = 'undefined' !== typeof opts.include ? opts.include : Z.include || [];
 			/* []: An array of key names to be removed from the object */
-			Z.remove = opts.remove || false;
+			Z.remove = 'undefined' !== typeof opts.remove ? opts.remove : Z.remove || false;
 			/* {}: An object containing key(s) to add, with function(s) which return the value */
-			Z.add = opts.add || false;	
-		}
-		Z.load = function(_jsonObj, isJZobj) {
+			Z.add = 'undefined' !== typeof opts.add ? opts.add : Z.add || false;	
+		};
+		Z.load = function(_jsonObj, _zipped, _options) {
 			Z.startLength = 0;
-			MAP = [];
-			try {
-				var stringIT = JSON.stringify(_jsonObj);
-				Z.startLength = stringIT.length;
-				Z.JO = JSON.parse(stringIT);
-			}
-			catch (err) {
-				throw "The json object has recursive references or is too big to load into memory";
-			}
-
-			Z.status = "zipable";
-			if (isJZobj) {
-				if (Z.JO.D && Z.JO.O && Z.JO.M) {
-					MAP = Z.JO.M;
-					Z.identifiers = Z.JO.O.I || [];
-					Z.isArray = Z.JO.O.A;
-					Z.exclude = Z.JO.O.eC || false;
-					Z.include = Z.JO.O.iC || false;
-					Z.JO = Z.JO.D;
-					Z.remove = false;
-					Z.add = false;	
-					Z.status = "unzipable";
-				} else 
-					Z.options(isJZobj,_jsonObj.constructor === Array);
-			}
+			MAP = [];						
 			prev = false;
 			prevID = false;
+			if (_zipped) {
+				if (_jsonObj.D && _jsonObj.M) {
+					MAP = _jsonObj.M;
+					//var stringIT = JSON.stringify(_jsonObj.D);
+					//Z.startLength = stringIT.length;
+					Z.JO = _jsonObj.D;//JSON.parse(stringIT);
+					Z.status = "unzipable";
+				} else
+					throw "Object provided doesn't match expected json zipped parameters.";				
+			} else {
+				try {
+					var stringIT = JSON.stringify(_jsonObj);
+					Z.startLength = stringIT.length;
+					Z.JO = JSON.parse(stringIT);
+					Z.status = "zipable";
+				}
+				catch (err) {
+					throw "The json object has recursive references or is too big to load into memory";
+				}
+			}
+			if (_options)
+				Z.options(_options,Z.JO.constructor === Array);
+			else {
+				Z.isArray = Z.isArray || Z.JO.constructor === Array;
+			}
 		};
 		
 		/* Private Functions */
@@ -131,20 +168,15 @@ var jsonZipper = (function(){
 			var mI = MAP.indexOf(key);
 			if (mI < 0) {
 				if (value) {
-					return MAP.push(key) - 1;
+					miniMap ? miniMap.push(key): 0;
+					return MAP.push(key) - 1;				
 				}
-				if (Z.exclude.indexOf(key) > -1) {
-					Z.uzOpts.eC.push(key);
+				if (Z.exclude.indexOf(key) > -1)
 					return key;
-				} else {
-					mI = MAP.push(key) - 1;
-					if (Z.identifiers.indexOf(key) > -1) {
-						Z.uzOpts.I.push(mI);
-					}
-					if (Z.include.indexOf(key) > -1) {
-						Z.uzOpts.iC.push(mI);
-					}
-				}				
+				else {
+					miniMap ? miniMap.push(key): 0;
+					mI = MAP.push(key) - 1;							
+				}
 			}
 			return mI;
 		};
@@ -160,31 +192,28 @@ var jsonZipper = (function(){
 			var i=0;
 			for (xend=Z.identifiers.length; i<xend; i++) {
 				var ikey = Z.identifiers[i];
-                J[ikey] = getID(J[ikey],1);
+				J[ikey] = getID(J[ikey],1);
 				id += J[ikey];
 			}
 			if (!prevSame || !prevID || prevID !== id) {
 				prevSame = false;
 				prev = J;
 				prevID = id; 
-			}
-			i=0;
-			for (iend=keys.length; i<iend; i++) {
+			}			
+			for (i=0, iend=keys.length; i<iend; i++) {
 				var key = keys[i];
 				if (Z.remove && Z.remove.indexOf(key) > -1)
 					delete J[key];
 				else {
-					var mI = getID(key);
+					var mI = getID(key);					
 					if (prevSame && (MAP[prev[mI]] === J[key] || prev[mI] === J[key]))
 						delete J[key];
-					else if (Z.include.indexOf(key) > -1) {
-						if (Z.identifiers.indexOf(key) > -1) 
-							J[mI] = J[key];
-						else J[mI] = getID(J[key],1);
-						delete J[key];
-					} else if (mI !== key) {
+					else {
 						J[mI] = J[key];
-						delete J[key];
+						if (Z.include.indexOf(key) > -1)
+							J[mI] = getID(J[key],1);
+						if (mI !== key)
+							delete J[key];
 					}
 				}
 			}
@@ -202,28 +231,22 @@ var jsonZipper = (function(){
 			else if (Z.identifiers) {
 				var x=0;
 				for (xend=Z.identifiers.length; x<xend; x++) {
-					var ikey = Z.identifiers[x];
+					var ikey = MAP.indexOf(Z.identifiers[x]);
 					J[ikey] = MAP[J[ikey]];
 				}
 			}
 			var i=0;
 			for (iend=keys.length; i<iend; i++) {
-				var key = keys[i]*1;
-				var value = J[key];
-				if (Z.remove && Z.remove.indexOf(key) > -1)
+				var key = keys[i];
+				if (Z.exclude.indexOf(key) > -1 && Z.include.indexOf(key) > -1) {	
+						J[key] = MAP[J[key]];			
+				} else {
+					key *= 1;
+					if (Z.include.indexOf(MAP[key]) > -1)
+						J[MAP[key]] = MAP[J[key]];
+					else 
+						J[MAP[key]] = J[key];
 					delete J[key];
-				else {
-					if (Z.exclude.indexOf(key) > -1) {
-						J[key] = J[key];
-						if (Z.include.indexOf(key) > -1)
-							J[key] = MAP[J[key]];
-					} else {
-						if (Z.include.indexOf(key) > -1)
-							J[MAP[key]] = MAP[J[key]];
-						else 
-							J[MAP[key]] = J[key];
-						delete J[key];
-					}
 				}
 			}
 			prev = J;
@@ -260,8 +283,8 @@ var jsonZipper = (function(){
 			if (Z.identifiers && obj1 && obj2 && obj1 !== obj2) {
 				var x=0;
 				for (xend=Z.identifiers.length; x<xend; x++) {
-					var key = Z.identifiers[x];
-					var mKey = MAP[Z.identifiers[x]];
+					var key = MAP.indexOf(Z.identifiers[x]);
+					var mKey = Z.identifiers[x];
 					if ('undefined' === typeof obj1[mKey] || ('undefined' !== typeof obj2[key] && MAP[obj2[key]] !== obj1[mKey]))
 						return false;					
 				}
@@ -284,20 +307,14 @@ var jsonZipper = (function(){
 				}
 			}
 		};
-
-		Z.setID = opts.setID || false;
-		Z.options(opts,_jsonObj.constructor === Array)
+	
 		Z.status = "ready to load object";
 		
 		/* Check if object is given and if options is object or 'compressed' flag */
 		if (_jsonObj && typeof(_jsonObj) === "object") {
-			/* When unzipping an object ensure _options is true and not an object, once loaded, you can set the options */
-			if (_options && typeof(_options) === "boolean") {
-				Z.load(_jsonObj,true);
-			} else {
-				Z.load(_jsonObj,false);
-			}
-		}
+			Z.load(_jsonObj,!!_zipped,_options);
+		} else
+			Z.options(_options || {},false);
 	};
 	return jz;
 })();
