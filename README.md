@@ -44,13 +44,14 @@ Extracting
 	
 	
 Other:
+
 	var jZ = new jsonZipper();
 	
-	Z.load(jsonObj,false);
+	jZ.load(jsonObj,false);
 	
-	Z.load(zippedObj,true);
+	jZ.load(zippedObj,true);
 	
-	Z.(option_name) = value;
+	jZ.(option_name) = value;
 	
 	
 Options:
