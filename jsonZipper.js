@@ -3,116 +3,40 @@
 	Created: 08/2015
 	Version: 1.0
 	URL: https://github.com/u12206050/jsonZipper
+	ALTERED: Always has to be extracted from the start
+		can compress and extract at the same time.
 */
 
 var jsonZipper = (function(){
-	var jz = function(_jsonObj, _options, _zipped) {
+	var jz = function(_options) {
 		var Z = this;
 		var MAP = [];
-		var miniMap = false;		
-		Z.loMem = true;
+		var miniMap = false;
+
 		/* Public Functions */
-		
-		Z.zip = function() {
-			if (Z.status === "zipable") {
-				if (Z.isArray) {
-					var x = 0;
-					var y = Z.JO.length;
-					while (x < y) {
-						compress(Z.JO[x++]);
-					}
-				} else {
-					compress(Z.JO);
-				}
-				Z.status = "zipped";
-				return {M:MAP,D:Z.JO};
-			} return false;
-		};
-		Z.unzip = function() {			
-			if (Z.status === "unzipable") {
-				if (Z.isArray) {
-					var x = 0;
-					var y = Z.JO.length;
-					while (x < y) {
-						extract(Z.JO[x++]);
-					}
-				} else {
-					extract(Z.JO);
-				}
-				Z.status = "unzipped";
-				return Z.JO;
-			} return false;
-		};
+
 		Z.compress = function(obj) {
-			if (Z.status === "compressing") {
-				miniMap = [];
-				Z.JO.push(obj);
-				compress(obj);
-			} else if (Z.status === "ready to load object") {
-				Z.isArray = true;
-				Z.status = "compressing";
-				Z.JO = [];
-				MAP = [];
-				miniMap = [];
-				Z.JO.push(obj);
-				compress(obj);
-			} else return false;
+			miniMap = [];
+			compress(obj);
 			return miniMap.length > 0 ? [obj,miniMap] : [obj];
-		};
-		Z.getCompressed = function() {
-			return {M:MAP,D:Z.JO};
 		};
 		Z.reset = function() {
 			Z.JO = [];
 			MAP = [];
 			miniMap = [];
-			extracted = [];
-			prevExtractIndex = false; 
 			Z.status = "ready to load object";
 		};
-		var prevExtractIndex = false; 
-		var extracted = [];
 		Z.extract = function(ioro) {
-			var i = 0;
-			if (Z.status === "unzipable" || Z.status === "zipped" || Z.status === "ready to load object") {
-				var tmp = null;
-				if (ioro.constructor === Array) {
-					tmp = ioro[0];
-					i = Z.JO.indexOf(tmp);
-					if (i < 0 || (Z.loMem && prevExtractIndex !== i)) {
-						if (i < 0) {
-							if (Z.loMem)
-								tmp = JSON.parse(JSON.stringify(ioro[0]));
-							else i = Z.JO.push(tmp) - 1;
-							if (ioro.length > 1 && ioro[1].constructor === Array)
-								ioro[1].forEach(function(v){MAP.push(v);});
-						}
-						extract(tmp);
-					}
-				} else {
-					i = ioro*1;
-					if (i > -1) {
-						if (extracted.indexOf(i) > -1) {					
-							prev = Z.JO[i];
-						} else {
-							if (!prevExtractIndex || prevExtractIndex+1 !== ioro) {
-								setPrev(i);
-							}
-							extract(Z.JO[i]);
-							extracted.push(i);
-						}						
-					} else {
-						throw "Invalid Index: Could be you have just the zipped object, you need to extract it with jsonZipper.unzip()";
-					}
-					tmp = Z.JO[i];
-				}
-				prevExtractIndex = i;
-				return tmp;
-			}
-			return null;
+			if (ioro.constructor === Array) {
+				if (ioro.length > 1 && ioro[1].constructor === Array)
+					ioro[1].forEach(function(v){MAP.push(v);});
+				extract(ioro[0]);
+				return ioro[0];
+			} else 
+				throw "Invalid jzPart in EventKit";
 		};
-		Z.length = function() {
-			return JSON.stringify(Z.JO).length;// + (MAP ? JSON.stringify(MAP).length : 0);
+		Z.getMap = function() {
+			return MAP;// + (MAP ? JSON.stringify(MAP).length : 0);
 		};
 		Z.options = function(opts,isArray) {
 			/* []: An array of key names that will be used as identifiers.
@@ -129,38 +53,7 @@ var jsonZipper = (function(){
 			Z.remove = 'undefined' !== typeof opts.remove ? opts.remove : Z.remove || false;
 			/* {}: An object containing key(s) to add, with function(s) which return the value */
 			Z.add = 'undefined' !== typeof opts.add ? opts.add : Z.add || false;	
-		};
-		Z.load = function(_jsonObj, _zipped, _options) {
-			Z.startLength = 0;
-			MAP = [];						
-			prev = false;
-			prevID = false;
-			if (_zipped) {
-				if (_jsonObj.D && _jsonObj.M) {
-					MAP = _jsonObj.M;
-					//var stringIT = JSON.stringify(_jsonObj.D);
-					//Z.startLength = stringIT.length;
-					Z.JO = _jsonObj.D;//JSON.parse(stringIT);
-					Z.status = "unzipable";
-				} else
-					throw "Object provided doesn't match expected json zipped parameters.";				
-			} else {
-				try {
-					var stringIT = JSON.stringify(_jsonObj);
-					Z.startLength = stringIT.length;
-					Z.JO = JSON.parse(stringIT);
-					Z.status = "zipable";
-				}
-				catch (err) {
-					throw "The json object has recursive references or is too big to load into memory";
-				}
-			}
-			if (_options)
-				Z.options(_options,Z.JO.constructor === Array);
-			else {
-				Z.isArray = Z.isArray || Z.JO.constructor === Array;
-			}
-		};
+		};		
 		
 		/* Private Functions */
 
@@ -264,21 +157,7 @@ var jsonZipper = (function(){
 				}
 			}
 		};
-		/* Set the previous full object from the current index, incl. */
-		var setPrev = function(i) {
-			if (i > 0) {
-				var x=0;
-				for (xend=Z.identifiers.length; x<xend; x++) {
-					if ('undefined' === typeof Z.JO[i][Z.identifiers[x]]) {
-						setPrev(i-1);
-						return;
-					}
-				}
-				extract(Z.JO[i]);
-			} else 
-				extract(Z.JO[0]);
-		};
-		/* Checks if identiifiers match */
+		/* Checks if identifiers match */
 		var isSame = function(obj1, obj2) {
 			if (Z.identifiers && obj1 && obj2 && obj1 !== obj2) {
 				var x=0;
@@ -307,14 +186,7 @@ var jsonZipper = (function(){
 				}
 			}
 		};
-	
-		Z.status = "ready to load object";
-		
-		/* Check if object is given and if options is object or 'compressed' flag */
-		if (_jsonObj && typeof(_jsonObj) === "object") {
-			Z.load(_jsonObj,!!_zipped,_options);
-		} else
-			Z.options(_options || {},false);
+		Z.options(_options || {},false);
 	};
 	return jz;
 })();
